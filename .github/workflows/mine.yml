@@ -1,0 +1,44 @@
+name: AIBTC Miner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  mine:
+    name: Worker ${{ matrix.wallet_index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    strategy:
+      fail-fast: false
+      matrix:
+        wallet_index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cache Rust binary - mashi kaycompili kol run
+      - name: Cache Rust binary
+        id: cache-binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/aibtc-rust
+          key: aibtc-rust-${{ hashFiles('src/**', 'Cargo.toml', 'Cargo.lock') }}
+
+      - name: Install Rust
+        if: steps.cache-binary.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build (only if not cached)
+        if: steps.cache-binary.outputs.cache-hit != 'true'
+        run: |
+          cargo build --release
+          cp target/release/aibtc-rust ~/.cargo/bin/aibtc-rust
+
+      - name: Mine - Wallet ${{ matrix.wallet_index }}
+        run: |
+          ~/.cargo/bin/aibtc-rust \
+            "0x507642C6bD421b385A4d8e902d85E2f4BF9126c1,0x1C0bf59Af66003f66A844D849daA35177747Ec6A,0x8704361AD865F8dC4b58Cb61d889dB849fDa6E29,0x30d5dcB4319486614b5D2D9730DA17B535c91152,0x8E07A827F756f031C389D17fEf604697694457f7,0xe2ac6bE09d3096A8a6951D71365c44c34C6406a9,0xBb69225cd305d27AD139cc248A1077E42f6C507a,0x226CfDAa0dd95EEC29008eB918A58478658572BB,0xa4Cae154cd4bcC6143a36A44dcaA1FaAaBaa0E93,0x4DC82c2B922CE211A2582f2364E68B5FFdB995f4,0x4B224a373B33d481051A8E83587307c806f32695,0xfb4042B5e2ec6B1Dd1130B195C96e602714231fa,0xa5340E1e44f40D39C3EAB915eED2a09E9Eb9C14c,0xB3F2AeEf8f19D9Af43c4Ea21062CAB13E9Bd4f84,0x6Dd96bCf30A64cbFc7c026fDebbe71D085ad6055" \
+            ${{ matrix.wallet_index }}
